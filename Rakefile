@@ -4,14 +4,16 @@ require 'rake'
 begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
-    gem.name = "beanstalker"
-    gem.summary = %Q{Beanstalker provides deep integration with Beanstalk. Fork from http://github.com/kristjan/async_observer}
-    gem.description = %Q{Beanstalker provides deep integration with Beanstalk. Fork from http://github.com/kristjan/async_observer}
+    gem.name = "glebpom-async_observer"
+    gem.summary = %Q{async_observer provides deep integration with Beanstalk. Fork from http://github.com/kristjan/async_observer}
+    gem.description = %Q{async_observer provides deep integration with Beanstalk. Fork from http://github.com/kristjan/async_observer}
     gem.email = "glebpom@gmail.com"
-    gem.homepage = "http://github.com/glebpom/beanstalker"
+    gem.homepage = "http://github.com/glebpom/async_observer"
     gem.authors = ["Gleb Pomykalov"]
 #    gem.add_development_dependency "thoughtbot-shoulda", ">= 0"
     gem.add_dependency "daemonizer"
+    gem.add_dependency "beanstalk-client"
+    gem.add_dependency "rails", ">= 2.2.0"
   end
   Jeweler::GemcutterTasks.new
 rescue LoadError

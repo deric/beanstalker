@@ -63,9 +63,10 @@ class AsyncObserver::Worker
     $logger or RAILS_DEFAULT_LOGGER
   end
 
-  def initialize(top_binding)
+  def initialize(top_binding, options = {})
     @top_binding = top_binding
     @stop = false
+    @options = options
   end
 
   def main_loop
@@ -78,15 +79,11 @@ class AsyncObserver::Worker
 
   def startup
     log_bracketed('worker-startup') do
+      tube = @options[:tube] || "default"
       appver = AsyncObserver::Queue.app_version
-      logger.info "pid is #{$$}"
-      logger.info "app version is #{appver}"
       mark_db_socket_close_on_exec
-      if AsyncObserver::Queue.queue.nil?
-        logger.info 'no queue has been configured'
-        exit(1)
-      end
-      AsyncObserver::Queue.queue.watch(appver) if appver
+      logger.info "Using tube #{tube}"
+      AsyncObserver::Queue.queue.watch(tube)
     end
     flush_logger
   end

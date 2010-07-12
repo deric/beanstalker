@@ -10,7 +10,10 @@ module AsyncObserver
       $logger = logger
       logger.info "Starting cycle"
       logger.info "Options - #{option(:queue)}"
-      Worker.new(binding).run
+      Worker.new(binding, 
+                :tube => option(:tube), 
+                :worker_id => worker_id, 
+                :workers_count => workers_count).run
       logger.info "Ending cycle"
     end
   end

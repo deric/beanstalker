@@ -29,7 +29,7 @@ class << AsyncObserver::Queue
   DEFAULT_TTR = 120
   DEFAULT_TUBE = 'default'
 
-  attr_accessor :queue, :app_version, :after_put
+  attr_accessor :queue, :after_put
 
   # This is a fake worker instance for running jobs synchronously.
   def sync_worker()
@@ -64,7 +64,7 @@ class << AsyncObserver::Queue
     fuzz = opts.fetch(:fuzz, DEFAULT_FUZZ)
     delay = opts.fetch(:delay, DEFAULT_DELAY)
     ttr = opts.fetch(:ttr, DEFAULT_TTR)
-    tube = opts.fetch(:tube, (app_version or DEFAULT_TUBE))
+    tube = opts.fetch(:tube, DEFAULT_TUBE)
     worker_opts = opts.reject{|k,v| SUBMIT_OPTS.include?(k)}
     interpolator = opts.fetch(:interpolator, nil)
 

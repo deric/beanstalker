@@ -72,19 +72,14 @@ class AsyncObserver::Worker
   end
 
   def startup
-    log_bracketed('worker-startup') do
-      tube = @options[:tube] || "default"
-      appver = AsyncObserver::Queue.app_version
-      logger.info "Using tube #{tube}"
-      AsyncObserver::Queue.queue.watch(tube)
-    end
+    tube = @options[:tube] || "default"
+    logger.info "Using tube #{tube}"
+    AsyncObserver::Queue.queue.watch(tube)
     flush_logger
   end
 
   def shutdown
-    log_bracketed('worker-shutdown') do
-      do_all_work
-    end
+    do_all_work
   end
 
   def run
@@ -115,28 +110,26 @@ class AsyncObserver::Worker
   end
 
   def get_job
-    log_bracketed('worker-get-job') do
-      loop do
-        begin
-          AsyncObserver::Queue.queue.connect
-          self.class.run_before_reserve
-          return reserve_and_set_hint
-        rescue Interrupt => ex
-          raise ex
-        rescue SignalException => ex
-          raise ex
-        rescue Beanstalk::DeadlineSoonError
-          # Do nothing; immediately try again, giving the user a chance to
-          # clean up in the before_reserve hook.
-          logger.info 'Job deadline soon; you should clean up.'
-        rescue Exception => ex
-          @q_hint = nil # in case there's something wrong with this conn
-          logger.info(
-            "#{ex.class}: #{ex}\n" + ex.backtrace.join("\n"))
-          logger.info 'something is wrong. We failed to get a job.'
-          logger.info "sleeping for #{SLEEP_TIME}s..."
-          sleep(SLEEP_TIME)
-        end
+    loop do
+      begin
+        AsyncObserver::Queue.queue.connect
+        self.class.run_before_reserve
+        return reserve_and_set_hint
+      rescue Interrupt => ex
+        raise ex
+      rescue SignalException => ex
+        raise ex
+      rescue Beanstalk::DeadlineSoonError
+        # Do nothing; immediately try again, giving the user a chance to
+        # clean up in the before_reserve hook.
+        logger.info 'Job deadline soon; you should clean up.'
+      rescue Exception => ex
+        @q_hint = nil # in case there's something wrong with this conn
+        logger.info(
+          "#{ex.class}: #{ex}\n" + ex.backtrace.join("\n"))
+        logger.info 'something is wrong. We failed to get a job.'
+        logger.info "sleeping for #{SLEEP_TIME}s..."
+        sleep(SLEEP_TIME)
       end
     end
   end
@@ -148,23 +141,19 @@ class AsyncObserver::Worker
   end
 
   def safe_dispatch(job)
-    log_bracketed('worker-dispatch') do
-      logger.info "got #{job.inspect}:\n" + job.body
-      log_bracketed('job-stats') do
-        job.stats.each do |k,v|
-          logger.info "#{k}=#{v}"
-        end
-      end
-      begin
-        return dispatch(job)
-      rescue Interrupt => ex
-        begin job.release rescue :ok end
-        raise ex
-      rescue Exception => ex
-        handle_error(job, ex)
-      ensure
-        flush_logger
-      end
+    logger.info "got #{job.inspect}:\n" + job.body
+    job.stats.each do |k,v|
+      logger.info "#{k}=#{v}"
+    end
+    begin
+      return dispatch(job)
+    rescue Interrupt => ex
+      begin job.release rescue :ok end
+      raise ex
+    rescue Exception => ex
+      handle_error(job, ex)
+    ensure
+      flush_logger
     end
   end
 
@@ -186,7 +175,12 @@ class AsyncObserver::Worker
   def self.default_handle_error(job, ex)
     logger.info "Job failed: #{job.server}/#{job.id}"
     logger.info("#{ex.class}: #{ex}\n" + ex.backtrace.join("\n"))
-    job.decay
+    if job.stats['releases'] > 10
+      job.bury
+      logger.info "BURY job due to many releases"
+    else
+      job.decay
+    end
   rescue Beanstalk::UnexpectedResponse
   end
 

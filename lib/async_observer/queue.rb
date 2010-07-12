@@ -48,7 +48,7 @@ class << AsyncObserver::Queue
 
   def put!(obj, pri=DEFAULT_PRI, delay=DEFAULT_DELAY, ttr=DEFAULT_TTR,
            tube=DEFAULT_TUBE)
-    return sync_run(obj) if (:direct.equal?(pri) or !queue)
+    return sync_run(obj) if pri == :direct || !queue
     queue.connect()
     queue.use(tube)
     info = [queue.yput(obj, pri, delay, ttr), queue.last_server]
@@ -68,7 +68,7 @@ class << AsyncObserver::Queue
     worker_opts = opts.reject{|k,v| SUBMIT_OPTS.include?(k)}
     interpolator = opts.fetch(:interpolator, nil)
 
-    pri = pri + rand(fuzz + 1) if !:direct.equal?(pri)
+    pri = pri + rand(fuzz + 1) if pri != :direct
 
     if interpolator
       code = packed = interpolator

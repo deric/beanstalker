@@ -29,12 +29,39 @@ CLASSES_TO_EXTEND = [
 ]
 
 module AsyncObserver::Extensions
+  def self.included(receiver)
+    @@methods_async_options = {}
+    receiver.extend(ClassMethods)
+  end
+    
+  module ClassMethods
+    def async_method(method, options = {})
+      methods_async_options = class_variable_get(:@@methods_async_options)
+      if options
+        class_variable_set(:@@methods_async_options, methods_async_options.merge(method.to_sym => options))
+      end
+    end
+  end
+  
+  def interpolate_async_options(options, object)
+    result = {}
+    options.each do |k,v|
+      result[k] = if v.is_a?(Proc)
+        v.call(object)
+      else
+        v
+      end
+    end
+    result
+  end
+  
   def async_send(selector, *args)
-    async_send_opts(selector, {}, *args)
+    async_send_opts(selector, @@methods_async_options[selector.to_sym] || {}, *args)
   end
 
   def async_send_opts(selector, opts, *args)
-    AsyncObserver::Queue.put_call!(self, selector, opts, args)
+    interpolated_options = interpolate_async_options(opts, self)
+    AsyncObserver::Queue.put_call!(self, selector, interpolated_options, args)
   end
 end
 

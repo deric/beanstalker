@@ -66,12 +66,19 @@ class << AsyncObserver::Queue
     ttr = opts.fetch(:ttr, DEFAULT_TTR)
     tube = opts.fetch(:tube, (app_version or DEFAULT_TUBE))
     worker_opts = opts.reject{|k,v| SUBMIT_OPTS.include?(k)}
+    interpolator = opts.fetch(:interpolator, nil)
 
     pri = pri + rand(fuzz + 1) if !:direct.equal?(pri)
 
-    code = gen(obj, sel, args)
-    RAILS_DEFAULT_LOGGER.info("put #{pri} #{code}")
-    put!(pkg(code, worker_opts), pri, delay, ttr, tube)
+    if interpolator
+      code = packed = interpolator
+    else 
+      code = gen(obj, sel, args)
+      packed = pkg(code, worker_opts)
+    end
+    
+    RAILS_DEFAULT_LOGGER.info("put #{pri} #{code} to #{tube}")
+    put!(packed, pri, delay, ttr, tube)
   end
 
   def pkg(code, opts)

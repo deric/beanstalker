@@ -15,12 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-begin
-  require 'mysql'
-rescue LoadError
-  # Ignore case where we don't have mysql
-end
 require 'async_observer/queue'
 require 'async_observer/util'
 
@@ -81,17 +75,10 @@ class AsyncObserver::Worker
     log_bracketed('worker-startup') do
       tube = @options[:tube] || "default"
       appver = AsyncObserver::Queue.app_version
-      mark_db_socket_close_on_exec
       logger.info "Using tube #{tube}"
       AsyncObserver::Queue.queue.watch(tube)
     end
     flush_logger
-  end
-
-  # This prevents us from leaking fds when we exec. Only works for mysql.
-  def mark_db_socket_close_on_exec
-    ActiveRecord::Base.active_connections.each(&:set_close_on_exec)
-  rescue NoMethodError
   end
 
   def shutdown
@@ -240,25 +227,3 @@ class AsyncObserver::Worker
   end
 end
 
-class ActiveRecord::ConnectionAdapters::MysqlAdapter < ActiveRecord::ConnectionAdapters::AbstractAdapter
-  def set_close_on_exec
-    @connection.set_close_on_exec
-  end
-end
-
-class Mysql
-  def set_close_on_exec
-    if @net
-      @net.set_close_on_exec
-    else
-      # we are in the c mysql binding
-      logger.info "Warning: we are using the C mysql binding, can't set close-on-exec"
-    end
-  end
-end
-
-class Mysql::Net
-  def set_close_on_exec
-    @sock.fcntl(Fcntl::F_SETFD, Fcntl::FD_CLOEXEC)
-  end
-end

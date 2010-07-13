@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Gleb Pomykalov"]
-  s.date = %q{2010-07-07}
+  s.date = %q{2010-07-13}
   s.description = %q{async_observer provides deep integration with Beanstalk. Fork from http://github.com/kristjan/async_observer}
   s.email = %q{glebpom@gmail.com}
   s.extra_rdoc_files = [
@@ -21,10 +21,11 @@ Gem::Specification.new do |s|
      "README",
      "Rakefile",
      "VERSION",
+     "glebpom-async_observer.gemspec",
      "init.rb",
+     "lib/async_observer/daemonizer_handler.rb",
      "lib/async_observer/extend.rb",
      "lib/async_observer/queue.rb",
-     "lib/async_observer/util.rb",
      "lib/async_observer/worker.rb"
   ]
   s.homepage = %q{http://github.com/glebpom/async_observer}

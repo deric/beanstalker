@@ -16,13 +16,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 require 'async_observer/queue'
-require 'async_observer/util'
 
 module AsyncObserver; end
 
 class AsyncObserver::Worker
-  extend AsyncObserver::Util
-  include AsyncObserver::Util
 
   SLEEP_TIME = 60 if !defined?(SLEEP_TIME) # rails loads this file twice
 
@@ -61,6 +58,7 @@ class AsyncObserver::Worker
     @top_binding = top_binding
     @stop = false
     @options = options
+    AsyncObserver::Queue.queue = @options[:servers]
   end
 
   def main_loop

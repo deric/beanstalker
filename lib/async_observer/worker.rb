@@ -58,7 +58,9 @@ class AsyncObserver::Worker
     @top_binding = top_binding
     @stop = false
     @options = options
-    AsyncObserver::Queue.queue = Beanstalk::Pool.new(@options[:servers])
+    if @options && @options[:server]
+      AsyncObserver::Queue.queue = Beanstalk::Pool.new(@options[:servers])
+    end
   end
 
   def main_loop

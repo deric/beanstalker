@@ -1,6 +1,6 @@
-This is Async Observer -- a Rails gem that provides deep integration with
-Beanstalk.
+This is Beanstalker -- a Rails gem that provides deep integration with
+Beanstalk. (forked from async_observer)
 
-This version of plugin is rewritten using daemonizer.
+This version is rewritten using daemonizer.
 
 Documentation coming soon...

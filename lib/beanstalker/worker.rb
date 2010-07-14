@@ -143,7 +143,7 @@ class Beanstalker::Worker
   def safe_dispatch(job)
     logger.info "got #{job.inspect}:\n" + job.body
     job.stats.each do |k,v|
-      logger.info "#{k}=#{v}"
+      logger.debug "#{k}=#{v}"
     end
     begin
       return dispatch(job)
@@ -192,6 +192,7 @@ class Beanstalker::Worker
     run_code(job)
     job.delete unless job.ybody[:delete_first]
   rescue ActiveRecord::RecordNotFound => ex
+    logger.warn "Record not found. Doing decay"
     unless job.ybody[:delete_first]
       if job.age > 60
         job.delete # it's old; this error is most likely permanent

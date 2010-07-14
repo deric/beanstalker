@@ -11,7 +11,7 @@ begin
     gem.homepage = "http://github.com/glebpom/async_observer"
     gem.authors = ["Gleb Pomykalov"]
 #    gem.add_development_dependency "thoughtbot-shoulda", ">= 0"
-    gem.add_dependency "daemonizer"
+    gem.add_dependency "daemonizer", "~>0.2.0"
     gem.add_dependency "beanstalk-client"
     gem.add_dependency "rails", ">= 2.2.0"
   end

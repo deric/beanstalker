@@ -1,15 +1,15 @@
 module AsyncObserver
   class DaemonizerHandler < Daemonizer::Handler
-    def before_init(block)
+    def prepare(block)
+      logger.info "Loading Rails"
       require File.join(Daemonizer.root, '/config/environment')
       require 'async_observer/worker'
+      logger.info "Rails loaded"
       super
     end
     
-    def after_init
-      $logger = logger
+    def start
       logger.info "Starting cycle"
-      logger.info "Options - #{option(:queue)}"
       Worker.new(binding, 
                 :tube => option(:tube), 
                 :servers => option(:servers),

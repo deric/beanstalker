@@ -15,11 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-require 'async_observer/queue'
+require 'beanstalker/queue'
 
-module AsyncObserver; end
+module Beanstalker; end
 
-class AsyncObserver::Worker
+class Beanstalker::Worker
 
   SLEEP_TIME = 60 if !defined?(SLEEP_TIME) # rails loads this file twice
 
@@ -59,7 +59,7 @@ class AsyncObserver::Worker
     @stop = false
     @options = options
     if @options && @options[:servers]
-      AsyncObserver::Queue.queue = Beanstalk::Pool.new(@options[:servers])
+      Beanstalker::Queue.queue = Beanstalk::Pool.new(@options[:servers])
     end
   end
 
@@ -74,7 +74,7 @@ class AsyncObserver::Worker
   def startup
     tube = @options[:tube] || "default"
     logger.info "Using tube #{tube}"
-    AsyncObserver::Queue.queue.watch(tube)
+    Beanstalker::Queue.queue.watch(tube)
     flush_logger
   end
 
@@ -90,7 +90,7 @@ class AsyncObserver::Worker
   end
 
   def q_hint
-    @q_hint || AsyncObserver::Queue.queue
+    @q_hint || Beanstalker::Queue.queue
   end
 
   # This heuristic is to help prevent one queue from starving. The idea is that
@@ -112,7 +112,7 @@ class AsyncObserver::Worker
   def get_job
     loop do
       begin
-        AsyncObserver::Queue.queue.connect
+        Beanstalker::Queue.queue.connect
         self.class.run_before_reserve
         return reserve_and_set_hint
       rescue Interrupt => ex
@@ -136,7 +136,7 @@ class AsyncObserver::Worker
 
   def dispatch(job)
     ActiveRecord::Base.verify_active_connections!
-    return run_ao_job(job) if async_observer_job?(job)
+    return run_ao_job(job) if beanstalker_job?(job)
     return run_other(job)
   end
 
@@ -205,7 +205,7 @@ class AsyncObserver::Worker
     eval(job.ybody[:code], @top_binding, "(beanstalk job #{job.id})", 1)
   end
 
-  def async_observer_job?(job)
+  def beanstalker_job?(job)
     begin job.ybody[:type] == :rails rescue false end
   end
 

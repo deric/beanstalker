@@ -1,9 +1,9 @@
-module AsyncObserver
+module Beanstalker
   class DaemonizerHandler < Daemonizer::Handler
     def prepare(block)
       logger.info "Loading Rails"
       require File.join(Daemonizer.root, '/config/environment')
-      require 'async_observer/worker'
+      require 'beanstalker/worker'
       logger.info "Rails loaded"
       super
     end

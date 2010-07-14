@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-require 'async_observer/queue'
+require 'beanstalker/queue'
 
 CLASSES_TO_EXTEND = [
   ActiveRecord::Base,
@@ -28,7 +28,7 @@ CLASSES_TO_EXTEND = [
   Symbol,
 ]
 
-module AsyncObserver::Extensions
+module Beanstalker::Extensions
   def self.included(receiver)
     @@methods_async_options = {}
     receiver.extend(ClassMethods)
@@ -61,12 +61,12 @@ module AsyncObserver::Extensions
 
   def async_send_opts(selector, opts, *args)
     interpolated_options = interpolate_async_options(opts, self)
-    AsyncObserver::Queue.put_call!(self, selector, interpolated_options, args)
+    Beanstalker::Queue.put_call!(self, selector, interpolated_options, args)
   end
 end
 
 CLASSES_TO_EXTEND.each do |c|
-  c.send :include, AsyncObserver::Extensions
+  c.send :include, Beanstalker::Extensions
 end
 
 class Range

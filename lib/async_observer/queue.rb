@@ -18,11 +18,11 @@
 
 require 'beanstalk-client'
 
-module AsyncObserver; end
+module Beanstalker; end
 
-class AsyncObserver::Queue; end
+class Beanstalker::Queue; end
 
-class << AsyncObserver::Queue
+class << Beanstalker::Queue
   DEFAULT_PRI = 512
   DEFAULT_FUZZ = 0
   DEFAULT_DELAY = 0
@@ -33,14 +33,14 @@ class << AsyncObserver::Queue
 
   # This is a fake worker instance for running jobs synchronously.
   def sync_worker()
-    require 'async_observer/worker'
-    @sync_worker ||= AsyncObserver::Worker.new(binding)
+    require 'beanstalker/worker'
+    @sync_worker ||= Beanstalker::Worker.new(binding)
   end
 
   # This runs jobs synchronously; it's used when no queue is configured.
   def sync_run(obj)
     body = YAML.dump(obj)
-    job = Beanstalk::Job.new(AsyncObserver::FakeConn.new(), 0, body)
+    job = Beanstalk::Job.new(Beanstalker::FakeConn.new(), 0, body)
     sync_worker.dispatch(job)
     sync_worker.do_all_work()
     return 0, '0.0.0.0'
@@ -52,7 +52,7 @@ class << AsyncObserver::Queue
     queue.connect()
     queue.use(tube)
     info = [queue.yput(obj, pri, delay, ttr), queue.last_server]
-    f = AsyncObserver::Queue.after_put
+    f = Beanstalker::Queue.after_put
     f.call(*info) if f
     return info
   end
@@ -95,7 +95,7 @@ class << AsyncObserver::Queue
   end
 end
 
-class AsyncObserver::FakeConn
+class Beanstalker::FakeConn
   def delete(x)
   end
 
@@ -181,7 +181,7 @@ class Date
   def rrepr() "Date.parse('#{self.inspect}')" end
 end
 
-module AsyncObserver::Extensions
+module Beanstalker::Extensions
   def rrepr()
     method = (respond_to? :get_cache) ? 'get_cache' : 'find'
     "#{self.class.rrepr}.#{method}(#{id.rrepr})"

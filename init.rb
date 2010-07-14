@@ -1,1 +1,1 @@
-require 'async_observer/extend'
+require 'beanstalker/extend'

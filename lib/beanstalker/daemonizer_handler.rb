@@ -9,13 +9,14 @@ module Beanstalker
     end
     
     def start
-      logger.info "Starting cycle"
+      $logger = logger
+      $logger.info "Starting cycle"
       Worker.new(binding, 
                 :tube => option(:tube), 
                 :servers => option(:servers),
                 :worker_id => worker_id, 
                 :workers_count => workers_count).run
-      logger.info "Ending cycle"
+      $logger.info "Ending cycle"
     end
   end
 end

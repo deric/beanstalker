@@ -75,7 +75,7 @@ class Beanstalker::Worker
     tube = @options[:tube] || "default"
     logger.info "Using tube #{tube}"
     Beanstalker::Queue.queue.watch(tube)
-    flush_logger
+    Daemonizer.flush_logger
   end
 
   def shutdown

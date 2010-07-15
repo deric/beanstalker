@@ -141,7 +141,7 @@ class Beanstalker::Worker
   end
 
   def safe_dispatch(job)
-    logger.info "got #{job.inspect}:\n" + job.body
+    logger.info "got #{job.inspect}:"
     job.stats.each do |k,v|
       logger.debug "#{k}=#{v}"
     end
@@ -178,7 +178,7 @@ class Beanstalker::Worker
   end
 
   def run_ao_job(job)
-    logger.info 'running as async observer job'
+    logger.info 'running as async observer job: #{job[:code]}'
     f = self.class.before_filter
     f.call(job) if f
     job.delete if job.ybody[:delete_first]

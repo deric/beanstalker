@@ -153,14 +153,7 @@ class Beanstalker::Worker
     rescue Exception => ex
       handle_error(job, ex)
     ensure
-      flush_logger
-    end
-  end
-
-  def flush_logger
-    if defined?(logger) &&
-        logger.respond_to?(:flush)
-      logger.flush
+      Daemonizer.flush_logger
     end
   end
 

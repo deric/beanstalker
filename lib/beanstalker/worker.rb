@@ -178,7 +178,7 @@ class Beanstalker::Worker
   end
 
   def run_ao_job(job)
-    logger.info 'running as async observer job: #{job[:code]}'
+    logger.info "running as async observer job: #{job[:code]}"
     f = self.class.before_filter
     f.call(job) if f
     job.delete if job.ybody[:delete_first]

@@ -141,10 +141,6 @@ class Beanstalker::Worker
   end
 
   def safe_dispatch(job)
-    logger.info "got #{job.inspect}:"
-    job.stats.each do |k,v|
-      logger.debug "#{k}=#{v}"
-    end
     begin
       return dispatch(job)
     rescue Interrupt => ex
@@ -178,12 +174,13 @@ class Beanstalker::Worker
   end
 
   def run_ao_job(job)
-    logger.info "running as async observer job: #{job[:code]}"
+    logger.info "Running '#{job[:code]}'. Age #{job.stats['age']}, Release #{job.stats['releases']}"
     f = self.class.before_filter
-    f.call(job) if f
+    result = f.call(job) if f
     job.delete if job.ybody[:delete_first]
     run_code(job)
     job.delete unless job.ybody[:delete_first]
+    logger.info "Finished"
   rescue ActiveRecord::RecordNotFound => ex
     logger.warn "Record not found. Doing decay"
     unless job.ybody[:delete_first]

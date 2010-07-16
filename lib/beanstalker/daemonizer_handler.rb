@@ -1,6 +1,6 @@
 module Beanstalker
   class DaemonizerHandler < Daemonizer::Handler
-    def prepare(block)
+    def prepare(starter, &block)
       logger.info "Loading Rails"
       require File.join(Daemonizer.root, '/config/environment')
       require 'beanstalker/worker'

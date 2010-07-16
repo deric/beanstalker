@@ -72,9 +72,19 @@ class Beanstalker::Worker
   end
 
   def startup
-    tube = @options[:tube] || "default"
-    logger.info "Using tube #{tube}"
-    Beanstalker::Queue.queue.watch(tube)
+    tubes = Array.wrap(@options[:tube].to_s || "default") #["default"]
+    watched_tubes = Beanstalker::Queue.queue.list_tubes_watched.values.flatten #["default"]
+    to_watch = tubes - watched_tubes
+    to_ignore = watched_tubes - tubes
+    logger.debug "to_watch = #{to_watch.join(',')}"
+    logger.debug "to_ignore = #{to_ignore.join(',')}"
+    to_watch.each do |t|
+      Beanstalker::Queue.queue.watch(t)
+    end
+    to_ignore.each do |t|
+      Beanstalker::Queue.queue.ignore(t)
+    end
+    logger.info "Using tubes: #{Beanstalker::Queue.queue.list_tubes_watched.values.flatten.join(',')}"
     Daemonizer.flush_logger
   end
 

@@ -11,11 +11,15 @@ module Beanstalker
     def start
       $logger = logger
       $logger.info "Starting cycle"
-      Worker.new(binding, 
+      if option(:error_handler)
+        Worker.custom_error_handler = option(:error_handler)
+      end
+      @worker = Worker.new(binding, 
                 :tube => option(:tube), 
                 :servers => option(:servers),
                 :worker_id => worker_id, 
-                :workers_count => workers_count).run
+                :workers_count => workers_count)
+      @worker.run
       $logger.info "Ending cycle"
     end
   end

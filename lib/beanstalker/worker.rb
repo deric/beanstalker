@@ -27,11 +27,6 @@ class Beanstalker::Worker
     attr_accessor :finish
     attr_accessor :custom_error_handler
     attr_accessor :before_filter
-    attr_writer :handle
-
-    def handle
-      @handle or raise 'no custom handler is defined'
-    end
 
     def error_handler(&block)
       self.custom_error_handler = block
@@ -76,8 +71,6 @@ class Beanstalker::Worker
     watched_tubes = Beanstalker::Queue.queue.list_tubes_watched.values.flatten #["default"]
     to_watch = tubes - watched_tubes
     to_ignore = watched_tubes - tubes
-    logger.debug "to_watch = #{to_watch.join(',')}"
-    logger.debug "to_ignore = #{to_ignore.join(',')}"
     to_watch.each do |t|
       Beanstalker::Queue.queue.watch(t)
     end
@@ -147,7 +140,6 @@ class Beanstalker::Worker
   def dispatch(job)
     ActiveRecord::Base.verify_active_connections!
     return run_ao_job(job) if beanstalker_job?(job)
-    return run_other(job)
   end
 
   def safe_dispatch(job)
@@ -174,32 +166,17 @@ class Beanstalker::Worker
   def self.default_handle_error(job, ex)
     logger.info "Job failed: #{job.server}/#{job.id}"
     logger.info("#{ex.class}: #{ex}\n" + ex.backtrace.join("\n"))
-    if job.stats['releases'] > 10
-      job.bury
-      logger.info "BURY job due to many releases"
-    else
-      job.decay
-    end
+    job.decay
   rescue Beanstalk::UnexpectedResponse
   end
 
   def run_ao_job(job)
-    logger.info "Running '#{job[:code]}'. Age #{job.stats['age']}, Release #{job.stats['releases']}"
+    logger.info "Running '#{job[:code]}'. Age #{job.stats['age']}, Releases #{job.stats['releases']}"
     f = self.class.before_filter
     result = f.call(job) if f
-    job.delete if job.ybody[:delete_first]
     run_code(job)
-    job.delete unless job.ybody[:delete_first]
+    job.delete
     logger.info "Finished"
-  rescue ActiveRecord::RecordNotFound => ex
-    logger.warn "Record not found. Doing decay"
-    unless job.ybody[:delete_first]
-      if job.age > 60
-        job.delete # it's old; this error is most likely permanent
-      else
-        job.decay # it could be replication delay so retry quietly
-      end
-    end
   end
 
   def run_code(job)
@@ -210,13 +187,8 @@ class Beanstalker::Worker
     begin job.ybody[:type] == :rails rescue false end
   end
 
-  def run_other(job)
-    logger.info 'trying custom handler'
-    self.class.handle.call(job)
-  end
-
   def do_all_work
-    logger.info 'finishing all running jobs. interrupt again to kill them.'
+    logger.info 'finishing all running jobs'
     f = self.class.finish
     f.call if f
   end

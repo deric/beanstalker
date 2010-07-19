@@ -43,11 +43,11 @@ module Beanstalker::Extensions
     end
   end
   
-  def interpolate_async_options(options, object)
+  def interpolate_async_options(options, object, *args)
     result = {}
     options.each do |k,v|
       result[k] = if v.is_a?(Proc)
-        v.call(object)
+        v.call(object, *args)
       else
         v
       end
@@ -60,7 +60,7 @@ module Beanstalker::Extensions
   end
 
   def async_send_opts(selector, opts, *args)
-    interpolated_options = interpolate_async_options(opts, self)
+    interpolated_options = interpolate_async_options(opts, self, *args)
     Beanstalker::Queue.put_call!(self, selector, interpolated_options, args)
   end
 end

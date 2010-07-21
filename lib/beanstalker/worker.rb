@@ -67,7 +67,7 @@ class Beanstalker::Worker
   end
 
   def startup
-    tubes = Array.wrap(@options[:tube].to_s || "default") #["default"]
+    tubes = Array.wrap(@options[:tube] || "default").map(&:to_s) #["default"]
     watched_tubes = Beanstalker::Queue.queue.list_tubes_watched.values.flatten #["default"]
     to_watch = tubes - watched_tubes
     to_ignore = watched_tubes - tubes

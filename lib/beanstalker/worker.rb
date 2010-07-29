@@ -195,9 +195,12 @@ class Beanstalker::Worker
 
   def run_ao_job(job)
     runner = lambda {
-      f = self.class.before_filter
-      result = f.call(job) if f
-      run_code(job)
+      time_taken = Benchmark.realtime do
+        f = self.class.before_filter
+        result = f.call(job) if f
+        run_code(job)
+      end
+      logger.info "Finished. Job id=#{job.stats['id']}. Code '#{job[:code]}'. Time taken: #{time_taken} sec"
       job.delete
     }
     if @options[:ruby_timeout]
@@ -210,7 +213,6 @@ class Beanstalker::Worker
       logger.info "Job id=#{job.stats['id']}. Running '#{job[:code]}'. Age #{job.stats['age']}, Releases #{job.stats['releases']}, TTR #{job.stats['ttr']}"
       runner.call
     end
-    logger.info "Finished"
   end
 
   def run_code(job)

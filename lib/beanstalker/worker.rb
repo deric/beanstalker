@@ -96,6 +96,10 @@ class Beanstalker::Worker
   def q_hint
     @q_hint || Beanstalker::Queue.queue
   end
+  
+  def logger
+    Daemonizer.logger or RAILS_DEFAULT_LOGGER
+  end
 
   # This heuristic is to help prevent one queue from starving. The idea is that
   # if the connection returns a job right away, it probably has more available.
@@ -198,15 +202,15 @@ class Beanstalker::Worker
     }
     if @options[:ruby_timeout]
       timeout = (job.stats['ttr'].to_f * 0.8)
-      Daemonizer.logger.info "TO=#{timeout} sec. Job id=#{job.stats['id']}. Running '#{job[:code]}'. Age #{job.stats['age']}, Releases #{job.stats['releases']}, TTR #{job.stats['ttr']}"
+      logger.info "TO=#{timeout} sec. Job id=#{job.stats['id']}. Running '#{job[:code]}'. Age #{job.stats['age']}, Releases #{job.stats['releases']}, TTR #{job.stats['ttr']}"
       Timeout.timeout(timeout) do
         runner.call
       end
     else
-      Daemonizer.logger.info "Job id=#{job.stats['id']}. Running '#{job[:code]}'. Age #{job.stats['age']}, Releases #{job.stats['releases']}, TTR #{job.stats['ttr']}"
+      logger.info "Job id=#{job.stats['id']}. Running '#{job[:code]}'. Age #{job.stats['age']}, Releases #{job.stats['releases']}, TTR #{job.stats['ttr']}"
       runner.call
     end
-    Daemonizer.logger.info "Finished"
+    logger.info "Finished"
   end
 
   def run_code(job)

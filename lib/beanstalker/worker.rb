@@ -26,10 +26,15 @@ class Beanstalker::Worker
   class << self
     attr_accessor :finish
     attr_accessor :custom_error_handler
+    attr_accessor :custom_timeout_handler
     attr_accessor :before_filter
 
     def error_handler(&block)
       self.custom_error_handler = block
+    end
+
+    def timeout_handler(&block)
+      self.custom_timeout_handler = block
     end
 
     def before_reserves
@@ -45,10 +50,6 @@ class Beanstalker::Worker
     end
   end
   
-  def logger
-    $logger or RAILS_DEFAULT_LOGGER
-  end
-
   def initialize(top_binding, options = {})
     @top_binding = top_binding
     @stop = false
@@ -77,7 +78,7 @@ class Beanstalker::Worker
     to_ignore.each do |t|
       Beanstalker::Queue.queue.ignore(t)
     end
-    logger.info "Using tubes: #{Beanstalker::Queue.queue.list_tubes_watched.values.flatten.join(',')}"
+    Daemonizer.logger.info "Using tubes: #{Beanstalker::Queue.queue.list_tubes_watched.values.flatten.join(',')}"
     Daemonizer.flush_logger
   end
 
@@ -125,13 +126,13 @@ class Beanstalker::Worker
       rescue Beanstalk::DeadlineSoonError
         # Do nothing; immediately try again, giving the user a chance to
         # clean up in the before_reserve hook.
-        logger.info 'Job deadline soon; you should clean up.'
+        Daemonizer.logger.info 'Job deadline soon; you should clean up.'
       rescue Exception => ex
         @q_hint = nil # in case there's something wrong with this conn
-        logger.info(
+        Daemonizer.logger.info(
           "#{ex.class}: #{ex}\n" + ex.backtrace.join("\n"))
-        logger.info 'something is wrong. We failed to get a job.'
-        logger.info "sleeping for #{SLEEP_TIME}s..."
+        Daemonizer.logger.info 'something is wrong. We failed to get a job.'
+        Daemonizer.logger.info "sleeping for #{SLEEP_TIME}s..."
         sleep(SLEEP_TIME)
       end
     end
@@ -145,6 +146,8 @@ class Beanstalker::Worker
   def safe_dispatch(job)
     begin
       return dispatch(job)
+    rescue Timeout::Error
+      handle_timeout(job)
     rescue Interrupt => ex
       begin job.release rescue :ok end
       raise ex
@@ -163,20 +166,47 @@ class Beanstalker::Worker
     end
   end
 
+  def handle_timeout(job)
+    if self.class.custom_timeout_handler
+      self.class.custom_timeout_handler.call(job)
+    else
+      self.class.default_handle_timeout(job)
+    end
+  end
+
   def self.default_handle_error(job, ex)
-    logger.info "Job failed: #{job.server}/#{job.id}"
-    logger.info("#{ex.class}: #{ex}\n" + ex.backtrace.join("\n"))
+    Daemonizer.logger.info "Job failed: #{job.server}/#{job.id}"
+    Daemonizer.logger.info("#{ex.class}: #{ex}\n" + ex.backtrace.join("\n"))
     job.decay
-  rescue Beanstalk::UnexpectedResponse
+  rescue Beanstalk::UnexpectedResponse => e
+    Daemonizer.logger.info "Unexpected Beanstalkd error: #{job.server}/#{job.id}. #{e.inspect}"
+  end
+
+  def self.default_handle_timeout(job)
+    Daemonizer.logger.info "Job timeout: #{job.server}/#{job.id}"
+    job.decay
+  rescue Beanstalk::UnexpectedResponse => e
+    Daemonizer.logger.info "Unexpected Beanstalkd error: #{job.server}/#{job.id}. #{e.inspect}"
   end
 
   def run_ao_job(job)
-    logger.info "Running '#{job[:code]}'. Age #{job.stats['age']}, Releases #{job.stats['releases']}"
-    f = self.class.before_filter
-    result = f.call(job) if f
-    run_code(job)
-    job.delete
-    logger.info "Finished"
+    runner = lambda {
+      f = self.class.before_filter
+      result = f.call(job) if f
+      run_code(job)
+      job.delete
+    }
+    if @options[:ruby_timeout]
+      timeout = (job.stats['ttr'].to_f * 0.8)
+      Daemonizer.logger.info "TO=#{timeout} sec. Job id=#{job.stats['id']}. Running '#{job[:code]}'. Age #{job.stats['age']}, Releases #{job.stats['releases']}, TTR #{job.stats['ttr']}"
+      Timeout.timeout(timeout) do
+        runner.call
+      end
+    else
+      Daemonizer.logger.info "Job id=#{job.stats['id']}. Running '#{job[:code]}'. Age #{job.stats['age']}, Releases #{job.stats['releases']}, TTR #{job.stats['ttr']}"
+      runner.call
+    end
+    Daemonizer.logger.info "Finished"
   end
 
   def run_code(job)
@@ -188,7 +218,7 @@ class Beanstalker::Worker
   end
 
   def do_all_work
-    logger.info 'finishing all running jobs'
+    Daemonizer.logger.info 'finishing all running jobs'
     f = self.class.finish
     f.call if f
   end

@@ -77,7 +77,7 @@ class << Beanstalker::Queue
       packed = pkg(code, worker_opts, obj, sel)
     end
     
-    RAILS_DEFAULT_LOGGER.info("put #{pri} #{code} to #{tube}")
+    RAILS_DEFAULT_LOGGER.info("put #{pri} #{code} to #{tube} with ttr #{ttr}")
     put!(packed, pri, delay, ttr, tube)
   end
 

@@ -14,11 +14,15 @@ module Beanstalker
       if option(:error_handler)
         Worker.custom_error_handler = option(:error_handler)
       end
+      if option(:timeout_handler)
+        Worker.custom_timeout_handler = option(:timeout_handler)
+      end
       @worker = Worker.new(binding, 
                 :tube => option(:tube), 
                 :servers => option(:servers),
                 :worker_id => worker_id, 
-                :workers_count => workers_count)
+                :workers_count => workers_count,
+                :ruby_timeout => option(:ruby_timeout).nil? ? true : option(:ruby_timeout))
       @worker.run
       $logger.info "Ending cycle"
     end

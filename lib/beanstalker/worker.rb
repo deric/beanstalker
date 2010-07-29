@@ -222,7 +222,7 @@ class Beanstalker::Worker
   end
 
   def do_all_work
-    Daemonizer.logger.info 'finishing all running jobs'
+    logger.info 'finishing all running jobs'
     f = self.class.finish
     f.call if f
   end

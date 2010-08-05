@@ -17,6 +17,9 @@ module Beanstalker
       if option(:timeout_handler)
         Worker.custom_timeout_handler = option(:timeout_handler)
       end
+      if option(:before_filter)                 
+        Worker.before_filter = option(:before_filter)
+      end
       @worker = Worker.new(binding, 
                 :tube => option(:tube), 
                 :servers => option(:servers),

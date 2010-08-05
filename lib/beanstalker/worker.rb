@@ -195,13 +195,18 @@ class Beanstalker::Worker
 
   def run_ao_job(job)
     runner = lambda {
-      time_taken = Benchmark.realtime do
-        f = self.class.before_filter
-        result = f.call(job) if f
+      t1 = Time.now
+      f = self.class.before_filter
+      statistics = job.stats.dup
+      code = job[:code]
+      can_run = f ? f.call(job) : true 
+      if can_run
         run_code(job)
+        job.delete
+        logger.info "Finished. Job id=#{statistics['id']}. Code '#{code}'. Time taken: #{(Time.now - t1).to_f} sec"      
+      else
+        logger.info "Not runnind due to :before_filter restriction. Job id=#{statistics['id']}. Code '#{code}'."
       end
-      logger.info "Finished. Job id=#{job.stats['id']}. Code '#{job[:code]}'. Time taken: #{time_taken} sec"
-      job.delete
     }
     if @options[:ruby_timeout]
       timeout = (job.stats['ttr'].to_f * 0.8)

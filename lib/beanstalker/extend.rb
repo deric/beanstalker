@@ -30,6 +30,7 @@ CLASSES_TO_EXTEND = [
 
 module Beanstalker::Extensions
   def self.included(receiver)
+    @@methods_async_options = {}
     receiver.extend(ClassMethods)
   end
 

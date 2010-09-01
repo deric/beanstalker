@@ -30,18 +30,19 @@ CLASSES_TO_EXTEND = [
 
 module Beanstalker::Extensions
   def self.included(receiver)
+    @@methods_async_options = {}
     receiver.extend(ClassMethods)
   end
-
+    
   module ClassMethods
     def async_method(method, options = {})
-      @methods_async_options ||= {}
+      methods_async_options = class_variable_get(:@@methods_async_options)
       if options
-        @methods_async_options.merge!(method.to_sym => options)
+        class_variable_set(:@@methods_async_options, methods_async_options.merge(method.to_sym => options))
       end
     end
   end
-
+  
   def interpolate_async_options(options, object, *args)
     result = {}
     options.each do |k,v|
@@ -53,10 +54,9 @@ module Beanstalker::Extensions
     end
     result
   end
-
+  
   def async_send(selector, *args)
-    @methods_async_options ||= {}
-    async_send_opts(selector, @methods_async_options[selector.to_sym] || {}, *args)
+    async_send_opts(selector, @@methods_async_options[selector.to_sym] || {}, *args)
   end
 
   def async_send_opts(selector, opts, *args)

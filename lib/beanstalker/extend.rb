@@ -40,6 +40,13 @@ module Beanstalker::Extensions
         @methods_async_options.merge!(method.to_sym => options)
       end
     end
+
+    def async_class_method(method, options = {})
+      @class_methods_async_options ||= {}
+      if options
+        @class_methods_async_options.merge!(method.to_sym => options)
+      end
+    end
   end
 
   def interpolate_async_options(options, object, *args)
@@ -55,8 +62,12 @@ module Beanstalker::Extensions
   end
 
   def async_send(selector, *args)
-    @methods_async_options ||= {}
-    async_send_opts(selector, @methods_async_options[selector.to_sym] || {}, *args)
+    if self.is_a?(Class)
+      methods_async_options = self.send(:instance_variable_get, :@class_methods_async_options) || {}
+    else
+      methods_async_options = self.class.send(:instance_variable_get, :@methods_async_options) || {}
+    end
+    async_send_opts(selector, methods_async_options[selector.to_sym] || {}, *args)
   end
 
   def async_send_opts(selector, opts, *args)

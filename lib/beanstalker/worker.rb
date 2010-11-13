@@ -49,7 +49,7 @@ class Beanstalker::Worker
       before_reserves.each {|b| b.call}
     end
   end
-  
+
   def initialize(top_binding, options = {})
     @top_binding = top_binding
     @stop = false
@@ -96,7 +96,7 @@ class Beanstalker::Worker
   def q_hint
     @q_hint || Beanstalker::Queue.queue
   end
-  
+
   def logger
     Daemonizer.logger or RAILS_DEFAULT_LOGGER
   end
@@ -162,11 +162,49 @@ class Beanstalker::Worker
     end
   end
 
-  def handle_error(job, ex)
-    if self.class.custom_error_handler
-      self.class.custom_error_handler.call(job, ex)
+  def class_error_handler(klass)
+    if klass.respond_to?(:async_error_handler) and
+       async_error_handler = klass.async_error_handler and
+       async_error_handler.is_a?(Proc)
+    then
+      async_error_handler
     else
-      self.class.default_handle_error(job, ex)
+      false
+    end
+  end
+
+  def handle_error(job, ex)
+    custom_error_handler_ok = false
+    Daemonizer.logger.warn "Handling exception: #{ex.inspect}, job = #{job.id}"
+
+    if job[:class]
+      klass = Object.const_get(job[:class])
+      error_handler = class_error_handler(klass)
+      if error_handler.is_a?(Proc)
+        Daemonizer.logger.info "Running custom error handler for class #{job[:class]}, job = #{job.id}"
+        error_handler.call(job, ex)
+        job_reserved = begin
+          job.stats['state'] == 'reserved'
+        rescue Beanstalk::NotFoundError
+          false
+        end
+        if job_reserved
+          Daemonizer.logger.info "Custom error handler for class #{job[:class]} didn't release job. job = #{job.id}"
+        else
+          Daemonizer.logger.info "Custom error handler for class #{job[:class]} released job. job = #{job.id}"
+          custom_error_handler_ok = true
+        end
+      end
+    end
+
+    unless custom_error_handler_ok
+      Daemonizer.logger.info "Running common handler. job = #{job.id}"
+      if self.class.custom_error_handler
+        self.class.custom_error_handler.call(job, ex)
+      else
+        self.class.default_handle_error(job, ex)
+      end
+    else
     end
   end
 
@@ -199,11 +237,11 @@ class Beanstalker::Worker
       f = self.class.before_filter
       statistics = job.stats.dup
       code = job[:code]
-      can_run = f ? f.call(job) : true 
+      can_run = f ? f.call(job) : true
       if can_run
         run_code(job)
         job.delete
-        logger.info "Finished. Job id=#{statistics['id']}. Code '#{code}'. Time taken: #{(Time.now - t1).to_f} sec"      
+        logger.info "Finished. Job id=#{statistics['id']}. Code '#{code}'. Time taken: #{(Time.now - t1).to_f} sec"
       else
         logger.info "Not runnind due to :before_filter restriction. Job id=#{statistics['id']}. Code '#{code}'."
       end

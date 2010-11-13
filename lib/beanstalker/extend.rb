@@ -48,6 +48,14 @@ module Beanstalker::Extensions
         @class_methods_async_options.merge!(method.to_sym => options)
       end
     end
+
+    def async_rescue(&block)
+      @async_rescue = block
+    end
+
+    def async_error_handler
+      @async_rescue
+    end
   end
 
   def interpolate_async_options(options, object, *args)

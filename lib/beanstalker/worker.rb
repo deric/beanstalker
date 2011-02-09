@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 require 'beanstalker/queue'
+require 'beanstalker/mapper'
 
 module Beanstalker; end
 
@@ -51,6 +52,8 @@ class Beanstalker::Worker
   end
 
   def initialize(top_binding, options = {})
+    mapper_file = "#{RAILS_ROOT}/config/beanstalker_mapper.rb"
+    @mapper = Beanstalker::Mapper.new(mapper_file) if File.exist?(mapper_file)
     @top_binding = top_binding
     @stop = false
     @options = options
@@ -144,7 +147,11 @@ class Beanstalker::Worker
 
   def dispatch(job)
     ActiveRecord::Base.verify_active_connections!
-    return run_ao_job(job) if beanstalker_job?(job)
+    if rails_job?(job)
+      run_ao_job(job)
+    elsif mapped_job?(job)
+      run_mapped_job(job)
+    end
   end
 
   def safe_dispatch(job)
@@ -231,8 +238,34 @@ class Beanstalker::Worker
     Daemonizer.logger.info "Unexpected Beanstalkd error: #{job.server}/#{job.id}. #{e.inspect}"
   end
 
+  def run_with_ruby_timeout_if_set(job_desc, job, &block)
+    if @options[:ruby_timeout]
+      timeout = (job.stats['ttr'].to_f * 0.8)
+      logger.info "TO=#{timeout} sec. Job id=#{job.stats['id']}. Running '#{job_desc}'. Age #{job.stats['age']}, Releases #{job.stats['releases']}, TTR #{job.stats['ttr']}"
+      Timeout.timeout(timeout) do
+        block.call
+      end
+    else
+      logger.info "Job id=#{job.stats['id']}. Running '#{job_desc}'. Age #{job.stats['age']}, Releases #{job.stats['releases']}, TTR #{job.stats['ttr']}"
+      block.call
+    end
+  end
+
+  def run_mapped_job(job)
+    run_with_ruby_timeout_if_set(job[:name], job) do
+      t1 = Time.now
+      if @map_job = map_job(job[:name])
+        @map_job.call(job[:params] || {})
+        logger.info "Finished. Job id=#{job.stats['id']}. Mapped from '#{job[:name]}'. Time taken: #{(Time.now - t1).to_f} sec"
+      else
+        logger.error "Job id=#{job.stats['id']}. Mapping not found: '#{job[:name]}'. Releases #{job.stats['releases']}. Deleting"
+      end
+      job.delete
+    end
+  end
+
   def run_ao_job(job)
-    runner = lambda {
+    run_with_ruby_timeout_if_set(job[:code], job) do
       t1 = Time.now
       f = self.class.before_filter
       statistics = job.stats.dup
@@ -245,16 +278,6 @@ class Beanstalker::Worker
       else
         logger.info "Not runnind due to :before_filter restriction. Job id=#{statistics['id']}. Code '#{code}'."
       end
-    }
-    if @options[:ruby_timeout]
-      timeout = (job.stats['ttr'].to_f * 0.8)
-      logger.info "TO=#{timeout} sec. Job id=#{job.stats['id']}. Running '#{job[:code]}'. Age #{job.stats['age']}, Releases #{job.stats['releases']}, TTR #{job.stats['ttr']}"
-      Timeout.timeout(timeout) do
-        runner.call
-      end
-    else
-      logger.info "Job id=#{job.stats['id']}. Running '#{job[:code]}'. Age #{job.stats['age']}, Releases #{job.stats['releases']}, TTR #{job.stats['ttr']}"
-      runner.call
     end
   end
 
@@ -262,8 +285,16 @@ class Beanstalker::Worker
     eval(job.ybody[:code], @top_binding, "(beanstalk job #{job.id})", 1)
   end
 
-  def beanstalker_job?(job)
+  def rails_job?(job)
     begin job.ybody[:type] == :rails rescue false end
+  end
+
+  def mapped_job?(job)
+    begin job.ybody[:type] == :mapped rescue false end
+  end
+
+  def map_job(job)
+    @mapper && @mapper.method_for(job)
   end
 
   def do_all_work

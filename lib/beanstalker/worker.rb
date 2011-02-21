@@ -155,6 +155,7 @@ class Beanstalker::Worker
   end
 
   def safe_dispatch(job)
+    Daemonizer.logger.info "Dispatching job = #{job.id}"
     begin
       return dispatch(job)
     rescue Timeout::Error
@@ -276,7 +277,7 @@ class Beanstalker::Worker
         job.delete
         logger.info "Finished. Job id=#{statistics['id']}. Code '#{code}'. Time taken: #{(Time.now - t1).to_f} sec"
       else
-        logger.info "Not runnind due to :before_filter restriction. Job id=#{statistics['id']}. Code '#{code}'."
+        logger.info "Not running due to :before_filter restriction. Job id=#{statistics['id']}. Code '#{code}'."
       end
     end
   end

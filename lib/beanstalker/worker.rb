@@ -289,11 +289,11 @@ class Beanstalker::Worker
   end
 
   def rails_job?(job)
-    begin job.ybody[:type].to_s == 'rails' rescue false end
+    begin (job.ybody[:type] || job.ybody['type']).to_s == 'rails' rescue false end
   end
 
   def mapped_job?(job)
-    begin job.ybody[:type].to_s == 'mapped' rescue false end
+    begin (job.ybody[:type] || job.ybody['type']).to_s == 'mapped' rescue false end
   end
 
   def map_job(job)

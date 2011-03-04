@@ -147,7 +147,7 @@ class Beanstalker::Worker
 
   def dispatch(job)
     ActiveRecord::Base.verify_active_connections!
-    $logger.info "Got job: #{job.ybody.inspect}"
+    $logger.info "Got job: #{get_job_body(job).inspect}"
     if rails_job?(job)
       run_ao_job(job)
     elsif mapped_job?(job)
@@ -261,9 +261,9 @@ class Beanstalker::Worker
   end
 
   def run_mapped_job(job)
-    job_body = job.ybody.stringify_keys
+    job_body = get_job_body(job)
     job_kind = job_body['kind']
-    job_data = job_body['data'].stringify_keys
+    job_data = job_body['data']
     job_method = job_data['method']
 
     job_desc = "#{job_kind}/#{job_method}"
@@ -281,9 +281,13 @@ class Beanstalker::Worker
     end
   end
 
+  def get_job_body(job)
+    job.ybody.with_indifferent_access
+  end
+
   def run_ao_job(job)
-    job_data = job.ybody.stringify_keys['data']
-    code = job_data.stringify_keys['code']
+    job_data = get_job_body(job)['data']
+    code = job_data['code']
     run_with_ruby_timeout_if_set(code, job) do
       t1 = Time.now
       f = self.class.before_filter
@@ -304,11 +308,11 @@ class Beanstalker::Worker
   end
 
   def rails_job?(job)
-    job.ybody.stringify_keys['kind'].to_s == 'rails_beanstalker'
+    get_job_body(job)['kind'].to_s == 'rails_beanstalker'
   end
 
   def mapped_job?(job)
-    @mapper && @mapper.can_handle_kind?(job.ybody.stringify_keys['kind'])
+    @mapper && @mapper.can_handle_kind?(get_job_body(job)['kind'])
   end
 
   def do_all_work

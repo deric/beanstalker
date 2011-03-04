@@ -72,19 +72,19 @@ class << Beanstalker::Queue
 
     if interpolator
       code = packed = interpolator
-    else 
+    else
       code = gen(obj, sel, args)
       packed = pkg(code, worker_opts, obj, sel)
     end
-    
+
     RAILS_DEFAULT_LOGGER.info("put #{pri} #{code} to #{tube} with ttr #{ttr}")
     put!(packed, pri, delay, ttr, tube)
   end
 
   def pkg(code, opts, obj, sel)
-    opts.merge(:type => :rails, 
-               :code => code, 
-               :class => obj.is_a?(Class) ? obj.name : obj.class.to_s, 
+    opts.merge(:type => :rails,
+               :code => code,
+               :class => obj.is_a?(Class) ? obj.name : obj.class.to_s,
                :method => sel.to_s)
   end
 

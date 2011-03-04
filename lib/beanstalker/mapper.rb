@@ -19,7 +19,6 @@ module Beanstalker
     end
 
     def on(name, &block)
-      $logger.info "We are processing #{@current_kind}/#{name} now"
       if @current_kind.nil?
         raise WithBlockNotPresent, "Wrap #on calls with #with block to setup :kind of task in beanstalker_mapper.rb"
       end

@@ -147,17 +147,17 @@ class Beanstalker::Worker
 
   def dispatch(job)
     ActiveRecord::Base.verify_active_connections!
-    $logger.info "Got job: #{get_job_body(job).inspect}"
+    logger.info "Got job: #{get_job_body(job).inspect}"
     if rails_job?(job)
       run_ao_job(job)
     elsif mapped_job?(job)
       run_mapped_job(job)
     else
-      $logger.error "Job #{job.inspect} cannot be processed... deleteing"
+      logger.error "Job #{job.inspect} cannot be processed... deleteing"
       job.delete
     end
   rescue Exception => e
-    $logger.error "Exception: #{e.inspect}... Bury job"
+    logger.error "Exception: #{e.inspect}... Bury job"
     job.bury
   end
 

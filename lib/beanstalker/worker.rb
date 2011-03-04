@@ -151,8 +151,6 @@ class Beanstalker::Worker
       run_ao_job(job)
     elsif mapped_job?(job)
       run_mapped_job(job)
-    else
-      Daemonizer.logger.warn "Unknown type for job = #{job.id}"
     end
   end
 
@@ -288,11 +286,11 @@ class Beanstalker::Worker
   end
 
   def rails_job?(job)
-    begin job.ybody[:type].to_s == 'rails' rescue false end
+    begin job.ybody[:type] == :rails rescue false end
   end
 
   def mapped_job?(job)
-    begin job.ybody[:type].to_s == 'mapped' rescue false end
+    begin job.ybody[:type] == :mapped rescue false end
   end
 
   def map_job(job)

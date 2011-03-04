@@ -156,9 +156,6 @@ class Beanstalker::Worker
       logger.error "Job #{job.inspect} cannot be processed... deleteing"
       job.delete
     end
-  rescue Exception => e
-    logger.error "Exception: #{e.inspect}... Bury job"
-    job.bury
   end
 
   def safe_dispatch(job)
@@ -192,11 +189,12 @@ class Beanstalker::Worker
     Daemonizer.logger.warn "Handling exception: #{ex.backtrace.join('\n')}, job = #{job.id}"
 
     if rails_job?(job)
-      if job[:class]
-        klass = Object.const_get(job[:class])
+      class_name = get_job_body(job)[:data][:class]
+      if class_name
+        klass = Object.const_get(class_name)
         error_handler = class_error_handler(klass)
         if error_handler.is_a?(Proc)
-          Daemonizer.logger.info "Running custom error handler for class #{job[:class]}, job = #{job.id}"
+          Daemonizer.logger.info "Running custom error handler for class #{class_name}, job = #{job.id}"
           error_handler.call(job, ex)
           job_reserved = begin
             job.stats['state'] == 'reserved'
@@ -204,9 +202,9 @@ class Beanstalker::Worker
             false
           end
           if job_reserved
-            Daemonizer.logger.info "Custom error handler for class #{job[:class]} didn't release job. job = #{job.id}"
+            Daemonizer.logger.info "Custom error handler for class #{class_name} didn't release job. job = #{job.id}"
           else
-            Daemonizer.logger.info "Custom error handler for class #{job[:class]} released job. job = #{job.id}"
+            Daemonizer.logger.info "Custom error handler for class #{class_name} released job. job = #{job.id}"
             custom_error_handler_ok = true
           end
         end

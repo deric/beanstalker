@@ -82,10 +82,12 @@ class << Beanstalker::Queue
   end
 
   def pkg(code, opts, obj, sel)
-    opts.merge(:type => :rails,
-               :code => code,
-               :class => obj.is_a?(Class) ? obj.name : obj.class.to_s,
-               :method => sel.to_s)
+    opts.merge(:kind => 'rails_beanstalker',
+               :data => {
+                 :code => code,
+                 :class => obj.is_a?(Class) ? obj.name : obj.class.to_s,
+                 :method => sel.to_s
+               })
   end
 
   # Be careful not to pass in a selector that's not valid ruby source.

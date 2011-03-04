@@ -19,13 +19,12 @@ module Beanstalker
     end
 
     def on(name, &block)
+      $logger.info "We are processing #{@current_kind}/#{name} now"
       if @current_kind.nil?
         raise WithBlockNotPresent, "Wrap #on calls with #with block to setup :kind of task in beanstalker_mapper.rb"
       end
       @mapping[@current_kind] ||= {}
       @mapping[@current_kind][name.to_sym] = block
-    ensure
-      @mapping = {}
     end
 
     def with(kind, &block)
@@ -34,14 +33,8 @@ module Beanstalker
       @current_kind = nil
     end
 
-    def can_handle?(kind, name)
-      begin
-        method_for(kind, name)
-      rescue NotAcceptable
-        return false
-      else
-        return true
-      end
+    def can_handle_kind?(kind)
+      @mapping && !! @mapping[kind.to_sym]
     end
 
     def method_for(kind, name)

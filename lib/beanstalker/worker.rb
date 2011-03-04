@@ -147,11 +147,18 @@ class Beanstalker::Worker
 
   def dispatch(job)
     ActiveRecord::Base.verify_active_connections!
+    $logger.info "Got job: #{job.ybody.inspect}"
     if rails_job?(job)
       run_ao_job(job)
     elsif mapped_job?(job)
       run_mapped_job(job)
+    else
+      $logger.error "Job #{job.inspect} cannot be processed... deleteing"
+      job.delete
     end
+  rescue Exception => e
+    $logger.error "Exception: #{e.inspect}... Bury job"
+    job.bury
   end
 
   def safe_dispatch(job)
@@ -182,24 +189,26 @@ class Beanstalker::Worker
 
   def handle_error(job, ex)
     custom_error_handler_ok = false
-    Daemonizer.logger.warn "Handling exception: #{ex.inspect}, job = #{job.id}"
+    Daemonizer.logger.warn "Handling exception: #{ex.backtrace.join('\n')}, job = #{job.id}"
 
-    if job[:class]
-      klass = Object.const_get(job[:class])
-      error_handler = class_error_handler(klass)
-      if error_handler.is_a?(Proc)
-        Daemonizer.logger.info "Running custom error handler for class #{job[:class]}, job = #{job.id}"
-        error_handler.call(job, ex)
-        job_reserved = begin
-          job.stats['state'] == 'reserved'
-        rescue Beanstalk::NotFoundError
-          false
-        end
-        if job_reserved
-          Daemonizer.logger.info "Custom error handler for class #{job[:class]} didn't release job. job = #{job.id}"
-        else
-          Daemonizer.logger.info "Custom error handler for class #{job[:class]} released job. job = #{job.id}"
-          custom_error_handler_ok = true
+    if rails_job?(job)
+      if job[:class]
+        klass = Object.const_get(job[:class])
+        error_handler = class_error_handler(klass)
+        if error_handler.is_a?(Proc)
+          Daemonizer.logger.info "Running custom error handler for class #{job[:class]}, job = #{job.id}"
+          error_handler.call(job, ex)
+          job_reserved = begin
+            job.stats['state'] == 'reserved'
+          rescue Beanstalk::NotFoundError
+            false
+          end
+          if job_reserved
+            Daemonizer.logger.info "Custom error handler for class #{job[:class]} didn't release job. job = #{job.id}"
+          else
+            Daemonizer.logger.info "Custom error handler for class #{job[:class]} released job. job = #{job.id}"
+            custom_error_handler_ok = true
+          end
         end
       end
     end
@@ -252,27 +261,36 @@ class Beanstalker::Worker
   end
 
   def run_mapped_job(job)
-    run_with_ruby_timeout_if_set(job[:name], job) do
+    job_body = job.ybody.stringify_keys
+    job_kind = job_body['kind']
+    job_data = job_body['data'].stringify_keys
+    job_method = job_data['method']
+
+    job_desc = "#{job_kind}/#{job_method}"
+
+    run_with_ruby_timeout_if_set(job_desc, job) do
       t1 = Time.now
-      if @map_job = map_job(job[:name])
-        @map_job.call(job[:params] || {})
-        logger.info "Finished. Job id=#{job.stats['id']}. Mapped from '#{job[:name]}'. Time taken: #{(Time.now - t1).to_f} sec"
+      @map_job = @mapper && @mapper.method_for(job_kind, job_method)
+      if @map_job
+        @map_job.call(job_data['body'] || {})
+        logger.info "Finished. Job id=#{job.stats['id']}. Mapped from '#{job_desc}'. Time taken: #{(Time.now - t1).to_f} sec"
       else
-        logger.error "Job id=#{job.stats['id']}. Mapping not found: '#{job[:name]}'. Releases #{job.stats['releases']}. Deleting"
+        logger.error "Job id=#{job.stats['id']}. Mapping not found: '#{job_desc}'. Releases #{job.stats['releases']}. Deleting"
       end
       job.delete
     end
   end
 
   def run_ao_job(job)
-    run_with_ruby_timeout_if_set(job[:code], job) do
+    job_data = job.ybody.stringify_keys['data']
+    code = job_data.stringify_keys['code']
+    run_with_ruby_timeout_if_set(code, job) do
       t1 = Time.now
       f = self.class.before_filter
       statistics = job.stats.dup
-      code = job[:code]
       can_run = f ? f.call(job) : true
       if can_run
-        run_code(job)
+        run_code(job.id, code)
         job.delete
         logger.info "Finished. Job id=#{statistics['id']}. Code '#{code}'. Time taken: #{(Time.now - t1).to_f} sec"
       else
@@ -281,20 +299,16 @@ class Beanstalker::Worker
     end
   end
 
-  def run_code(job)
-    eval(job.ybody[:code], @top_binding, "(beanstalk job #{job.id})", 1)
+  def run_code(job_id, code)
+    eval(code, @top_binding, "(beanstalk job #{job_id})", 1)
   end
 
   def rails_job?(job)
-    begin job.ybody[:type] == :rails rescue false end
+    job.ybody.stringify_keys['kind'].to_s == 'rails_beanstalker'
   end
 
   def mapped_job?(job)
-    begin job.ybody[:type] == :mapped rescue false end
-  end
-
-  def map_job(job)
-    @mapper && @mapper.method_for(job)
+    @mapper && @mapper.can_handle_kind?(job.ybody.stringify_keys['kind'])
   end
 
   def do_all_work

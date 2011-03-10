@@ -186,7 +186,7 @@ class Beanstalker::Worker
 
   def handle_error(job, ex)
     custom_error_handler_ok = false
-    Daemonizer.logger.warn "Handling exception: #{ex.backtrace.join('\n')}, job = #{job.id}"
+    Daemonizer.logger.warn "Handling exception: #{ex.backtrace.join('/n')}, job = #{job.id}"
 
     if rails_job?(job)
       class_name = get_job_body(job)[:data][:class]

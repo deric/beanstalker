@@ -191,7 +191,11 @@ class Beanstalker::Worker
     if rails_job?(job)
       class_name = get_job_body(job)[:data][:class]
       if class_name
-        klass = Object.const_get(class_name)
+        begin
+          klass = Object.const_get(class_name)
+        rescue Exception => e
+          klass = nil
+        end
         error_handler = class_error_handler(klass)
         if error_handler.is_a?(Proc)
           Daemonizer.logger.info "Running custom error handler for class #{class_name}, job = #{job.id}"

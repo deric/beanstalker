@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Gleb Pomykalov"]
-  s.date = %q{2011-03-10}
+  s.date = %q{2011-03-16}
   s.description = %q{Beanstalker is a tool for executing long tasks in background in our rails application.}
   s.email = %q{glebpom@gmail.com}
   s.extra_rdoc_files = [

@@ -192,7 +192,7 @@ class Beanstalker::Worker
       class_name = get_job_body(job)[:data][:class]
       if class_name
         begin
-          klass = Object.const_get(class_name)
+          klass = class_name.constantize
         rescue Exception => e
           klass = nil
         end

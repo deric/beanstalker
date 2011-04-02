@@ -101,7 +101,7 @@ class Beanstalker::Worker
   end
 
   def logger
-    Daemonizer.logger or RAILS_DEFAULT_LOGGER
+   defined?(Daemonizer) && Daemonizer.logger or RAILS_DEFAULT_LOGGER
   end
 
   # This heuristic is to help prevent one queue from starving. The idea is that

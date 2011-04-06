@@ -29,6 +29,7 @@ class Beanstalker::Worker
     attr_accessor :custom_error_handler
     attr_accessor :custom_timeout_handler
     attr_accessor :before_filter
+    attr_accessor :on_job_event
 
     def error_handler(&block)
       self.custom_error_handler = block
@@ -147,7 +148,10 @@ class Beanstalker::Worker
 
   def dispatch(job)
     ActiveRecord::Base.verify_active_connections!
+
     logger.info "Got job: #{get_job_body(job).inspect}"
+    self.class.on_job_event.call(job, :dispatch) if self.class.on_job_event
+
     if rails_job?(job)
       run_ao_job(job)
     elsif mapped_job?(job)
@@ -187,6 +191,7 @@ class Beanstalker::Worker
   def handle_error(job, ex)
     custom_error_handler_ok = false
     Daemonizer.logger.warn "Handling exception: #{ex.backtrace.join("\n")}, job = #{job.id}"
+    self.class.on_job_event.call(job, :error) if self.class.on_job_event
 
     if rails_job?(job)
       class_name = get_job_body(job)[:data][:class]

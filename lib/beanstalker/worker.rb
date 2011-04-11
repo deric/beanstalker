@@ -80,7 +80,11 @@ class Beanstalker::Worker
       Beanstalker::Queue.queue.watch(t)
     end
     to_ignore.each do |t|
-      Beanstalker::Queue.queue.ignore(t)
+      begin
+        Beanstalker::Queue.queue.ignore(t)
+      rescue Exception => e
+        Daemonizer.logger.info "Failed to ignore tube: #{t}"
+      end
     end
     Daemonizer.logger.info "Using tubes: #{Beanstalker::Queue.queue.list_tubes_watched.values.flatten.join(',')}"
     Daemonizer.flush_logger

@@ -4,6 +4,7 @@ module Beanstalker
       logger.info "Loading Rails"
       require File.join(Daemonizer.root, '/config/environment')
       require 'beanstalker/worker'
+      require 'system_timer'
       logger.info "Rails loaded"
       super
     end

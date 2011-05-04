@@ -262,7 +262,7 @@ class Beanstalker::Worker
     if @options[:ruby_timeout]
       timeout = (job.stats['ttr'].to_f * 0.8)
       logger.info "TO=#{timeout} sec. Job id=#{job.stats['id']}. Running '#{job_desc}'. Age #{job.stats['age']}, Releases #{job.stats['releases']}, TTR #{job.stats['ttr']}"
-      Timeout.timeout(timeout) do
+      SystemTimer.timeout_after(timeout) do
         block.call
       end
     else

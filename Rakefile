@@ -10,10 +10,10 @@ begin
     gem.email = "glebpom@gmail.com"
     gem.homepage = "http://github.com/glebpom/beanstalker"
     gem.authors = ["Gleb Pomykalov"]
-#    gem.add_development_dependency "thoughtbot-shoulda", ">= 0"
     gem.add_dependency "daemonizer", "~>0.4.0"
     gem.add_dependency "beanstalk-client"
     gem.add_dependency "rails", ">= 2.2.0"
+    gem.add_dependency "SystemTimer", "~>1.2.3"
   end
   Jeweler::GemcutterTasks.new
 rescue LoadError
